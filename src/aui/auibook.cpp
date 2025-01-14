@@ -1889,32 +1889,18 @@ void wxAuiNotebook::UpdateHintWindowSize()
 wxSize wxAuiNotebook::CalculateNewSplitSize()
 {
     // count number of tab controls
-    int tab_ctrl_count = 0;
-    wxAuiPaneInfoArray& all_panes = m_mgr.GetAllPanes();
-    size_t i, pane_count = all_panes.GetCount();
-    for (i = 0; i < pane_count; ++i)
-    {
-        wxAuiPaneInfo& pane = all_panes.Item(i);
-        if (pane.name == wxT("dummy"))
-            continue;
-        tab_ctrl_count++;
-    }
+    int tab_ctrl_count = GetPageCount();
+    tab_ctrl_count = tab_ctrl_count > 4 ? 4 : tab_ctrl_count;
 
     wxSize new_split_size;
 
     // if there is only one tab control, the first split
     // should happen around the middle
-    if (tab_ctrl_count < 2)
+    if (tab_ctrl_count > 0)
     {
         new_split_size = GetClientSize();
-        new_split_size.x /= 2;
-        new_split_size.y /= 2;
-    }
-    else
-    {
-        // this is in place of a more complicated calculation
-        // that needs to be implemented
-        new_split_size = FromDIP(wxSize(180,180));
+        new_split_size.x /= tab_ctrl_count;
+        new_split_size.y /= tab_ctrl_count;
     }
 
     return new_split_size;
@@ -2534,10 +2520,51 @@ void wxAuiNotebook::Split(size_t page, int direction)
 }
 
 
+bool wxAuiNotebook::IsSplit()
+{
+    // count number of tab controls
+    int tab_ctrl_count = 0;
+    wxAuiPaneInfoArray& all_panes = m_mgr.GetAllPanes();
+    size_t i, pane_count = all_panes.GetCount();
+    for (i = 0; i < pane_count; ++i)
+    {
+        wxAuiPaneInfo& pane = all_panes.Item(i);
+        if (pane.name == wxT("dummy"))
+            continue;
+        tab_ctrl_count++;
+    }
+    return tab_ctrl_count > 1;
+}
+
 void wxAuiNotebook::OnSize(wxSizeEvent& evt)
 {
-    UpdateHintWindowSize();
+    if (IsSplit())
+    {
+        // choose a split size
+        wxSize split_size = CalculateNewSplitSize();
 
+        wxAuiPaneInfoArray& all_panes = m_mgr.GetAllPanes();
+        size_t i, pane_count = all_panes.GetCount();
+        for (i = 0; i < pane_count; ++i)
+        {
+            wxAuiPaneInfo& pane = all_panes.Item(i);
+            if (pane.name == wxT("dummy"))
+                continue;
+            pane.MinSize(split_size).MaxSize(split_size);
+            pane.Fixed();
+        }
+        m_mgr.Update();
+        for (i = 0; i < pane_count; ++i)
+        {
+            wxAuiPaneInfo& pane = all_panes.Item(i);
+            if (pane.name == wxT("dummy"))
+                continue;
+            pane.Resizable();
+        }
+        m_mgr.Update();
+    }
+    DoSizing();
+    UpdateHintWindowSize();
     evt.Skip();
 }
 
