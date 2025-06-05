@@ -312,6 +312,7 @@ public:
 
     virtual void Split(size_t page, int direction);
     bool IsSplit();
+    size_t GetSplitPageNum();
 
     const wxAuiManager& GetAuiManager() const { return m_mgr; }
 
