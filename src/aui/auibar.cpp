@@ -2492,9 +2492,7 @@ void wxAuiToolBar::OnPaint(wxPaintEvent& WXUNUSED(evt))
 {
     wxPaintDC dc(this);
     wxRect cli_rect(wxPoint(0,0), GetClientSize());
-    dc.SetBrush(*wxWHITE_BRUSH);
-    dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.DrawRectangle(cli_rect);
+    m_art->DrawBackground(dc, this, cli_rect);
 
     bool horizontal = m_orientation == wxHORIZONTAL;
 
