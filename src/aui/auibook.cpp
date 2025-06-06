@@ -1899,7 +1899,7 @@ wxSize wxAuiNotebook::CalculateNewSplitSize()
     if (tab_ctrl_count > 0)
     {
         new_split_size = GetClientSize();
-        new_split_size.x /= tab_ctrl_count;
+        //new_split_size.x /= tab_ctrl_count;
         new_split_size.y /= tab_ctrl_count;
     }
 
@@ -2430,7 +2430,7 @@ void wxAuiNotebook::Split(size_t page, int direction)
 
     // choose a split size
     wxSize split_size;
-    if (GetPageCount() > 2)
+    if (GetSplitPageNum() > 2)
     {
         split_size = CalculateNewSplitSize();
     }
