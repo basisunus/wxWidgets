@@ -457,3 +457,5 @@
 
 /build/cmake/output/
 CMakePresetsUser.json
+/samples/.vs/samples_vc17
+/samples
