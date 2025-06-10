@@ -594,7 +594,7 @@ protected:
     virtual bool UpdateTabCtrlHeight();
 
     virtual int CalculateTabCtrlHeight();
-    virtual wxSize CalculateNewSplitSize();
+    virtual wxSize CalculateNewSplitSize(int offset = 0);
 
     // get next page in physical (display) order
     virtual int GetNextPage(bool forward) const override;

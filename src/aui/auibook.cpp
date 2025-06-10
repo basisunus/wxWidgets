@@ -2252,7 +2252,7 @@ bool wxAuiNotebook::UpdateTabCtrlHeight()
 
 void wxAuiNotebook::UpdateHintWindowSize()
 {
-    wxSize size = CalculateNewSplitSize();
+    wxSize size = CalculateNewSplitSize(1);
 
     // the placeholder hint window should be set to this size
     wxAuiPaneInfo& info = m_mgr.GetPane(DUMMY_PANE_NAME);
@@ -2266,7 +2266,7 @@ void wxAuiNotebook::UpdateHintWindowSize()
 
 
 // calculates the size of the new split
-wxSize wxAuiNotebook::CalculateNewSplitSize()
+wxSize wxAuiNotebook::CalculateNewSplitSize(int offset)
 {
     // One of the panes corresponds to the dummy window, the rest are tabs.
     const int tab_ctrl_count = m_mgr.GetAllPanes().size() - 1;
@@ -2275,17 +2275,11 @@ wxSize wxAuiNotebook::CalculateNewSplitSize()
 
     // if there is only one tab control, the first split
     // should happen around the middle
-    if (tab_ctrl_count < 2)
+    if (tab_ctrl_count > 0)
     {
         new_split_size = GetClientSize();
-        new_split_size.x /= 2;
-        new_split_size.y /= 2;
-    }
-    else
-    {
-        // this is in place of a more complicated calculation
-        // that needs to be implemented
-        new_split_size = FromDIP(wxSize(180,180));
+        new_split_size.x /= tab_ctrl_count + offset;
+        new_split_size.y /= tab_ctrl_count + offset;
     }
 
     return new_split_size;
@@ -3075,6 +3069,38 @@ void wxAuiNotebook::UnsplitAll()
 
 void wxAuiNotebook::OnSize(wxSizeEvent& evt)
 {
+    // One of the panes corresponds to the dummy window, the rest are tabs.
+    const int tab_ctrl_count = m_mgr.GetAllPanes().size() - 1;
+
+
+    // if there is only one tab control, the first split
+    // should happen around the middle
+    if (tab_ctrl_count > 1)
+    {
+        // choose a split size
+        wxSize split_size = CalculateNewSplitSize();
+
+        wxAuiPaneInfoArray& all_panes = m_mgr.GetAllPanes();
+        size_t i, pane_count = all_panes.GetCount();
+        for (i = 0; i < pane_count; ++i)
+        {
+            wxAuiPaneInfo& pane = all_panes.Item(i);
+            if (pane.name == wxT("dummy"))
+                continue;
+            pane.MinSize(split_size).MaxSize(split_size);
+            pane.Fixed();
+        }
+        m_mgr.Update();
+        for (i = 0; i < pane_count; ++i)
+        {
+            wxAuiPaneInfo& pane = all_panes.Item(i);
+            if (pane.name == wxT("dummy"))
+                continue;
+            pane.Resizable();
+        }
+        m_mgr.Update();
+    }
+
     UpdateHintWindowSize();
 
     evt.Skip();
@@ -3433,7 +3459,7 @@ void wxAuiNotebook::OnTabEndDrag(wxAuiNotebookEvent& evt)
             }
 
             // If there is no tabframe at all, create one
-            wxAuiTabFrame* new_tabs = CreateTabFrame(CalculateNewSplitSize());
+            wxAuiTabFrame* new_tabs = CreateTabFrame(CalculateNewSplitSize(1));
 
             m_mgr.AddPane(new_tabs,
                           wxAuiPaneInfo().Bottom().CaptionVisible(false),
