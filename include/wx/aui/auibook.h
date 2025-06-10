@@ -577,6 +577,11 @@ public:
     void SaveLayout(const wxString& name, wxAuiBookSerializer& serializer) const;
     void LoadLayout(const wxString& name, wxAuiBookDeserializer& deserializer);
 
+    void SetCalculateMoveSplitSize(bool calculate)
+    {
+        m_calculateMoveSplitSize = calculate;
+    }
+
 protected:
     // Common part of all ctors.
     void Init();
@@ -595,6 +600,7 @@ protected:
 
     virtual int CalculateTabCtrlHeight();
     virtual wxSize CalculateNewSplitSize(int offset = 0);
+    wxSize CalculateMoveSplitSize();
 
     // get next page in physical (display) order
     virtual int GetNextPage(bool forward) const override;
@@ -662,6 +668,8 @@ protected:
 
     int m_lastDropMovePos = -1;
     unsigned int m_flags;
+
+    bool m_calculateMoveSplitSize = false;
 
 private:
     // Create a new tab frame, containing a new wxAuiTabCtrl.
