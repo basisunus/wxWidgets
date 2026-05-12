@@ -179,7 +179,6 @@
 /distrib/release
 
 # /docs/doxygen/
-/docs/doxygen/doxygen.log
 /docs/doxygen/out
 
 # /include/
@@ -457,4 +456,6 @@
 /3rdparty/webview2
 
 /build/cmake/output/
-CMakeUserPresets.json
+CMakePresetsUser.json
+/samples/.vs/samples_vc17
+/samples

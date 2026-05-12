@@ -659,6 +659,8 @@ protected:
     void SetHoverItem(wxAuiToolBarItem* item);
     void SetPressedItem(wxAuiToolBarItem* item);
     void RefreshOverflowState();
+    void SetToolStatusHelp(const wxString & helptext);
+    void ResetToolStatusHelp();
 
     int GetOverflowState() const;
     wxRect GetOverflowRect() const;
@@ -682,6 +684,7 @@ protected: // handlers
     void OnCaptureLost(wxMouseCaptureLostEvent& evt);
     void OnSetCursor(wxSetCursorEvent& evt);
     void OnSysColourChanged(wxSysColourChangedEvent& event);
+    wxFrame* GetParentFrame();
 
 protected:
 
@@ -690,6 +693,7 @@ protected:
     wxBoxSizer* m_sizer;                // main sizer for toolbar
     wxAuiToolBarItem* m_actionItem;    // item that's being acted upon (pressed)
     wxAuiToolBarItem* m_tipItem;       // item that has its tooltip shown
+    wxAuiToolBarItem* m_help_item;       // item that has its tooltip shown
     wxBitmap m_bitmap;                  // double-buffer bitmap
     wxSizerItem* m_gripperSizerItem;
     wxSizerItem* m_overflowSizerItem;
@@ -712,6 +716,7 @@ protected:
     bool m_dragging;
     bool m_gripperVisible;
     bool m_overflowVisible;
+    bool m_hasPushedStatusText;    //A guard to prevent multiple pushes and pops from the status bar text
 
     // This function is only kept for compatibility, don't use in the new code.
     bool RealizeHelper(wxClientDC& dc, bool horizontal);

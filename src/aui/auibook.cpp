@@ -2261,7 +2261,7 @@ void wxAuiNotebook::UpdateHintWindowSize()
 
 
 // calculates the size of the new split
-wxSize wxAuiNotebook::CalculateNewSplitSize()
+wxSize wxAuiNotebook::CalculateNewSplitSize(int offset)
 {
     return m_mgr.CalculateNewSplitSize();
 }
