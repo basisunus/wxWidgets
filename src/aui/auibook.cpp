@@ -901,15 +901,34 @@ void wxAuiTabContainer::RenderButtons(wxDC& dc, wxWindow* wnd,
 // Render() renders the tab catalog to the specified DC
 // It is a virtual function and can be overridden to
 // provide custom drawing capabilities
-void wxAuiTabContainer::Render(wxDC* pdc, wxWindow* wnd)
+void wxAuiTabContainer::Render(wxDC* raw_dc, wxWindow* wnd)
 {
+    if (!raw_dc || !raw_dc->IsOk())
+        return;
+
     if (m_rect.IsEmpty())
         return;
 
     size_t i;
     size_t page_count = m_pages.GetCount();
 
-    wxDC& dc = *pdc;
+#if wxALWAYS_NATIVE_DOUBLE_BUFFER
+    wxDC& dc = *raw_dc;
+#else
+    wxMemoryDC dc;
+
+    // use the same layout direction as the window DC uses to ensure that the
+    // text is rendered correctly
+    dc.SetLayoutDirection(raw_dc->GetLayoutDirection());
+
+    wxBitmap bmp;
+    // create off-screen bitmap
+    bmp.Create(m_rect.GetWidth(), m_rect.GetHeight(),*raw_dc);
+    dc.SelectObject(bmp);
+
+    if (!dc.IsOk())
+        return;
+#endif
 
     // draw background
     m_art->DrawBackground(dc, wnd, m_rect);
@@ -996,6 +1015,13 @@ void wxAuiTabContainer::Render(wxDC* pdc, wxWindow* wnd)
     {
         m_art->DrawPageTab(dc, wnd, m_pages.Item(active), active_rect);
     }
+
+
+#if !wxALWAYS_NATIVE_DOUBLE_BUFFER
+    raw_dc->Blit(m_rect.x, m_rect.y,
+                 m_rect.GetWidth(), m_rect.GetHeight(),
+                 &dc, 0, 0);
+#endif
 }
 
 // Is the tab visible?
@@ -1285,6 +1311,7 @@ int wxAuiTabContainer::GetFirstTabNotOfKind(wxAuiTabKind kind) const
 
 wxBEGIN_EVENT_TABLE(wxAuiTabCtrl, wxControl)
     EVT_PAINT(wxAuiTabCtrl::OnPaint)
+    EVT_ERASE_BACKGROUND(wxAuiTabCtrl::OnEraseBackground)
     EVT_SIZE(wxAuiTabCtrl::OnSize)
     EVT_LEFT_DOWN(wxAuiTabCtrl::OnLeftDown)
     EVT_LEFT_DCLICK(wxAuiTabCtrl::OnLeftDClick)
@@ -1295,6 +1322,7 @@ wxBEGIN_EVENT_TABLE(wxAuiTabCtrl, wxControl)
     EVT_RIGHT_UP(wxAuiTabCtrl::OnRightUp)
     EVT_MOTION(wxAuiTabCtrl::OnMotion)
     EVT_LEAVE_WINDOW(wxAuiTabCtrl::OnLeaveWindow)
+    EVT_AUINOTEBOOK_BUTTON(wxID_ANY, wxAuiTabCtrl::OnButton)
     EVT_SET_FOCUS(wxAuiTabCtrl::OnSetFocus)
     EVT_KILL_FOCUS(wxAuiTabCtrl::OnKillFocus)
     EVT_CHAR(wxAuiTabCtrl::OnChar)
@@ -1397,6 +1425,10 @@ void wxAuiTabCtrl::OnSysColourChanged(wxSysColourChangedEvent &event)
     {
         m_art->UpdateColoursFromSystem();
     }
+}
+
+void wxAuiTabCtrl::OnEraseBackground(wxEraseEvent& WXUNUSED(evt))
+{
 }
 
 void wxAuiTabCtrl::OnSize(wxSizeEvent& evt)
@@ -2028,9 +2060,45 @@ struct wxAuiNotebook::TabInfo : wxAuiNotebookPosition
     wxAuiNotebookPage* pageInfo = nullptr;
 };
 
+#define EVT_AUI_RANGE(id1, id2, event, func) \
+    wx__DECLARE_EVT2(event, id1, id2, wxAuiNotebookEventHandler(func))
+
 wxBEGIN_EVENT_TABLE(wxAuiNotebook, wxBookCtrlBase)
     EVT_SIZE(wxAuiNotebook::OnSize)
     EVT_CHILD_FOCUS(wxAuiNotebook::OnChildFocusNotebook)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_PAGE_CHANGING,
+                      wxAuiNotebook::OnTabClicked)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_BEGIN_DRAG,
+                      wxAuiNotebook::OnTabBeginDrag)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_END_DRAG,
+                      wxAuiNotebook::OnTabEndDrag)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_CANCEL_DRAG,
+                      wxAuiNotebook::OnTabCancelDrag)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_DRAG_MOTION,
+                      wxAuiNotebook::OnTabDragMotion)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_BUTTON,
+                      wxAuiNotebook::OnTabButton)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_TAB_MIDDLE_DOWN,
+                      wxAuiNotebook::OnTabMiddleDown)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_TAB_MIDDLE_UP,
+                      wxAuiNotebook::OnTabMiddleUp)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_TAB_RIGHT_DOWN,
+                      wxAuiNotebook::OnTabRightDown)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_TAB_RIGHT_UP,
+                      wxAuiNotebook::OnTabRightUp)
+    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
+                      wxEVT_AUINOTEBOOK_BG_DCLICK,
+                      wxAuiNotebook::OnTabBgDClick)
     EVT_NAVIGATION_KEY(wxAuiNotebook::OnNavigationKeyNotebook)
     EVT_SYS_COLOUR_CHANGED(wxAuiNotebook::OnSysColourChanged)
     EVT_DPI_CHANGED(wxAuiNotebook::OnDpiChanged)
@@ -2247,7 +2315,7 @@ bool wxAuiNotebook::UpdateTabCtrlHeight()
 
 void wxAuiNotebook::UpdateHintWindowSize()
 {
-    wxSize size = CalculateNewSplitSize();
+    wxSize size = CalculateNewSplitSize(1);
 
     // the placeholder hint window should be set to this size
     wxAuiPaneInfo& info = m_mgr.GetPane(DUMMY_PANE_NAME);
@@ -2263,7 +2331,80 @@ void wxAuiNotebook::UpdateHintWindowSize()
 // calculates the size of the new split
 wxSize wxAuiNotebook::CalculateNewSplitSize(int offset)
 {
-    return m_mgr.CalculateNewSplitSize();
+    // One of the panes corresponds to the dummy window, the rest are tabs.
+    const int tab_ctrl_count = m_mgr.GetAllPanes().size() - 1;
+
+    wxSize new_split_size;
+
+    // if there is only one tab control, the first split
+    // should happen around the middle
+    if (tab_ctrl_count + offset > 1)
+    {
+        new_split_size = GetClientSize();
+        new_split_size.x /= tab_ctrl_count + offset;
+        new_split_size.y /= tab_ctrl_count + offset;
+    }
+
+    return new_split_size;
+}
+
+wxSize wxAuiNotebook::CalculateMoveSplitSize()
+{
+    const wxAuiPaneInfoArray& allPanes = m_mgr.GetAllPanes();
+
+    // Skip dummy pane and find top-level panes (layer == 0)
+    std::vector<const wxAuiPaneInfo*> topLevelPanes;
+    for (const auto& pane : allPanes)
+    {
+        if (!pane.IsShown() || pane.name == wxT("dummy")) // skip dummy or hidden
+            continue;
+
+        topLevelPanes.push_back(&pane);
+    }
+
+    if (topLevelPanes.empty())
+        return wxSize(0, 0);
+
+    // Determine dominant direction (LEFT/RIGHT or TOP/BOTTOM)
+    int horizontalCount = 0;
+    int verticalCount = 0;
+
+    for (const auto* pane : topLevelPanes)
+    {
+        if (pane->dock_direction == wxAUI_DOCK_LEFT || pane->dock_direction == wxAUI_DOCK_RIGHT)
+            horizontalCount++;
+        else if (pane->dock_direction == wxAUI_DOCK_TOP || pane->dock_direction == wxAUI_DOCK_BOTTOM)
+            verticalCount++;
+    }
+
+    bool isHorizontal = horizontalCount >= verticalCount;
+
+    // Count only panes in the dominant direction
+    int countInDirection = 0;
+    for (const auto* pane : topLevelPanes)
+    {
+        if (isHorizontal &&
+            (pane->dock_direction == wxAUI_DOCK_LEFT ||
+             pane->dock_direction == wxAUI_DOCK_RIGHT ||
+             pane->dock_direction == wxAUI_DOCK_CENTER))
+            countInDirection++;
+        else if (!isHorizontal &&
+                 (pane->dock_direction == wxAUI_DOCK_TOP ||
+                  pane->dock_direction == wxAUI_DOCK_BOTTOM ||
+                  pane->dock_direction == wxAUI_DOCK_CENTER))
+            countInDirection++;
+    }
+
+    // Calculate new split size
+    wxSize new_split_size = GetClientSize();
+    int divisor = std::max(1, countInDirection);
+
+    if (isHorizontal)
+        new_split_size.x /= divisor;
+    else
+        new_split_size.y /= divisor;
+
+    return new_split_size;
 }
 
 int wxAuiNotebook::CalculateTabCtrlHeight()
@@ -2929,6 +3070,8 @@ wxAuiNotebook::GetPagesInDisplayOrder(wxAuiTabCtrl* tabCtrl) const
 
 void wxAuiNotebook::Split(size_t page, int direction)
 {
+    wxSize cli_size = GetClientSize();
+
     // get the page's window pointer
     wxWindow* wnd = GetPage(page);
     if (!wnd)
@@ -2949,7 +3092,34 @@ void wxAuiNotebook::Split(size_t page, int direction)
     wxAuiTabFrame* new_tabs = CreateTabFrame(CalculateNewSplitSize());
     wxAuiTabCtrl* const dest_tabs = new_tabs->m_tabs;
 
-    m_mgr.SplitPane(GetTabFrameFromTabCtrl(src_tabs), new_tabs, direction);
+    // create a pane info structure with the information
+    // about where the pane should be added
+    wxAuiPaneInfo paneInfo = wxAuiPaneInfo().Bottom().CaptionVisible(false);
+    wxPoint mouse_pt;
+
+    if (direction == wxLEFT)
+    {
+        paneInfo.Left();
+        mouse_pt = wxPoint(0, cli_size.y/2);
+    }
+    else if (direction == wxRIGHT)
+    {
+        paneInfo.Right();
+        mouse_pt = wxPoint(cli_size.x, cli_size.y/2);
+    }
+    else if (direction == wxTOP)
+    {
+        paneInfo.Top();
+        mouse_pt = wxPoint(cli_size.x/2, 0);
+    }
+    else if (direction == wxBOTTOM)
+    {
+        paneInfo.Bottom();
+        mouse_pt = wxPoint(cli_size.x/2, cli_size.y);
+    }
+
+    m_mgr.AddPane(new_tabs, paneInfo, mouse_pt);
+    m_mgr.Update();
 
     // remove the page from the source tabs
     wxAuiNotebookPage page_info = *srcTabInfo.pageInfo;
@@ -3039,6 +3209,41 @@ void wxAuiNotebook::UnsplitAll()
 
 void wxAuiNotebook::OnSize(wxSizeEvent& evt)
 {
+    if (m_calculateMoveSplitSize)
+    {
+        // One of the panes corresponds to the dummy window, the rest are tabs.
+        const int tab_ctrl_count = m_mgr.GetAllPanes().size() - 1;
+
+
+        // if there is only one tab control, the first split
+        // should happen around the middle
+        if (tab_ctrl_count > 1)
+        {
+            // choose a split size
+            wxSize split_size = CalculateMoveSplitSize();
+
+            wxAuiPaneInfoArray& all_panes = m_mgr.GetAllPanes();
+            size_t i, pane_count = all_panes.GetCount();
+            for (i = 0; i < pane_count; ++i)
+            {
+                wxAuiPaneInfo& pane = all_panes.Item(i);
+                if (pane.name == wxT("dummy"))
+                    continue;
+                pane.MinSize(split_size).MaxSize(split_size);
+                pane.Fixed();
+            }
+            m_mgr.Update();
+            for (i = 0; i < pane_count; ++i)
+            {
+                wxAuiPaneInfo& pane = all_panes.Item(i);
+                if (pane.name == wxT("dummy"))
+                    continue;
+                pane.Resizable();
+            }
+            m_mgr.Update();
+        }
+    }
+
     UpdateHintWindowSize();
 
     evt.Skip();
@@ -3405,6 +3610,10 @@ void wxAuiNotebook::OnTabEndDrag(wxAuiTabCtrl* src_tabs, int src_idx)
                             wxBOTTOM,
                             mouse_client_pt);
 
+            m_mgr.AddPane(new_tabs,
+                          wxAuiPaneInfo().Bottom().CaptionVisible(false),
+                          mouse_client_pt);
+            m_mgr.Update();
             dest_tabs = new_tabs->m_tabs;
             insert_idx = 0;
         }
@@ -4616,8 +4825,6 @@ wxAuiNotebook::LoadLayout(const wxString& name,
     // means we're reusing the existing pages and so don't need to do anything).
     if ( activeInMainTab )
         m_curPage = m_tabs.GetIdxFromWindow(activeInMainTab);
-
-    UpdateHintWindowSize();
 
     m_mgr.Update();
 }

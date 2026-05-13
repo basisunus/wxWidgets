@@ -390,6 +390,7 @@ protected:
     void OnRightUp(wxMouseEvent& evt);
     void OnMotion(wxMouseEvent& evt);
     void OnLeaveWindow(wxMouseEvent& evt);
+    void OnButton(wxAuiNotebookEvent& evt);
     void OnSetFocus(wxFocusEvent& event);
     void OnKillFocus(wxFocusEvent& event);
     void OnChar(wxKeyEvent& event);
@@ -402,6 +403,9 @@ protected:
     wxPoint m_clickPt = wxDefaultPosition;
     wxWindow* m_clickTab = nullptr;
     bool m_isDragging = false;
+
+    wxAuiTabContainerButton* m_hoverButton = nullptr;
+    wxAuiTabContainerButton* m_pressedButton = nullptr;
 
     void SetHoverTab(wxWindow* wnd);
 

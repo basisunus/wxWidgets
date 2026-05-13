@@ -31,6 +31,7 @@
 
 #include "wx/aui/auibar.h"
 #include "wx/aui/framemanager.h"
+#include "wx/aui/floatpane.h"
 
 #ifndef WX_PRECOMP
     #include "wx/dcclient.h"
@@ -85,6 +86,31 @@ static bool IsThemeDark()
 }
 
 
+
+class ToolbarCommandCapture : public wxEvtHandler
+{
+public:
+
+    ToolbarCommandCapture() { m_lastId = 0; }
+    int GetCommandId() const { return m_lastId; }
+
+    bool ProcessEvent(wxEvent& evt) override
+    {
+        if (evt.GetEventType() == wxEVT_MENU)
+        {
+            m_lastId = evt.GetId();
+            return true;
+        }
+
+        if (GetNextHandler())
+            return GetNextHandler()->ProcessEvent(evt);
+
+        return false;
+    }
+
+private:
+    int m_lastId;
+};
 
 wxBitmap wxAuiToolBarItem::GetCurrentBitmapFor(wxWindow* wnd) const
 {
@@ -891,6 +917,7 @@ void wxAuiToolBar::Init()
     m_actionPos = wxDefaultPosition;
     m_actionItem = nullptr;
     m_tipItem = nullptr;
+    m_help_item = nullptr;
     m_art = new wxAuiDefaultToolBarArt;
     m_toolTextOrientation = wxAUI_TBTOOL_TEXT_BOTTOM;
     m_gripperSizerItem = nullptr;
@@ -974,6 +1001,7 @@ bool wxAuiToolBar::Create(wxWindow* parent,
     if (style & wxAUI_TB_HORZ_LAYOUT)
         SetToolTextOrientation(wxAUI_TBTOOL_TEXT_RIGHT);
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    m_hasPushedStatusText = false;
 
     return true;
 }
@@ -1025,8 +1053,7 @@ void wxAuiToolBar::SetWindowStyleFlag(long style)
 
 wxSize wxAuiToolBar::DoGetBestSize() const
 {
-    auto bestSize = m_orientation == wxHORIZONTAL ? m_horzHintSize
-                                                  : m_vertHintSize;
+    auto bestSize = GetMinSize();
 
     if ( !bestSize.IsFullySpecified() )
     {
@@ -1084,14 +1111,24 @@ wxAuiToolBarItem* wxAuiToolBar::AddTool(int tool_id,
                            wxObject* client_data)
 {
     wxAuiToolBarItem item;
+    item.m_window = nullptr;
     item.m_label = label;
     item.m_bitmap = bitmap;
     item.m_disabledBitmap = disabledBitmap;
     item.m_shortHelp = shortHelpString;
     item.m_longHelp = longHelpString;
+    item.m_active = true;
+    item.m_dropDown = false;
+    item.m_spacerPixels = 0;
     item.m_toolId = tool_id;
+    item.m_state = 0;
+    item.m_proportion = 0;
     item.m_kind = kind;
+    item.m_sizerItem = nullptr;
+    item.m_minSize = wxDefaultSize;
+    item.m_userData = 0;
     item.m_clientData = client_data;
+    item.m_sticky = false;
 
     if (item.m_toolId == wxID_ANY)
         item.m_toolId = wxNewId();
@@ -1108,9 +1145,17 @@ wxAuiToolBarItem* wxAuiToolBar::AddControl(wxControl* control,
     item.m_label = label;
     item.m_bitmap = wxBitmapBundle();
     item.m_disabledBitmap = wxBitmapBundle();
+    item.m_active = true;
+    item.m_dropDown = false;
+    item.m_spacerPixels = 0;
     item.m_toolId = control->GetId();
+    item.m_state = 0;
+    item.m_proportion = 0;
     item.m_kind = wxITEM_CONTROL;
+    item.m_sizerItem = nullptr;
     item.m_minSize = control->GetEffectiveMinSize();
+    item.m_userData = 0;
+    item.m_sticky = false;
 
     m_items.Add(item);
     return &m_items.Last();
@@ -1125,10 +1170,21 @@ wxAuiToolBarItem* wxAuiToolBar::AddLabel(int tool_id,
         min_size.x = width;
 
     wxAuiToolBarItem item;
+    item.m_window = nullptr;
     item.m_label = label;
+    item.m_bitmap = wxBitmapBundle();
+    item.m_disabledBitmap = wxBitmapBundle();
+    item.m_active = true;
+    item.m_dropDown = false;
+    item.m_spacerPixels = 0;
     item.m_toolId = tool_id;
+    item.m_state = 0;
+    item.m_proportion = 0;
     item.m_kind = wxITEM_LABEL;
+    item.m_sizerItem = nullptr;
     item.m_minSize = min_size;
+    item.m_userData = 0;
+    item.m_sticky = false;
 
     if (item.m_toolId == wxID_ANY)
         item.m_toolId = wxNewId();
@@ -1140,8 +1196,20 @@ wxAuiToolBarItem* wxAuiToolBar::AddLabel(int tool_id,
 wxAuiToolBarItem* wxAuiToolBar::AddSeparator()
 {
     wxAuiToolBarItem item;
+    item.m_window = nullptr;
+    item.m_label = wxEmptyString;
+    item.m_bitmap = wxBitmapBundle();
+    item.m_disabledBitmap = wxBitmapBundle();
+    item.m_active = true;
+    item.m_dropDown = false;
     item.m_toolId = -1;
+    item.m_state = 0;
+    item.m_proportion = 0;
     item.m_kind = wxITEM_SEPARATOR;
+    item.m_sizerItem = nullptr;
+    item.m_minSize = wxDefaultSize;
+    item.m_userData = 0;
+    item.m_sticky = false;
 
     m_items.Add(item);
     return &m_items.Last();
@@ -1150,9 +1218,21 @@ wxAuiToolBarItem* wxAuiToolBar::AddSeparator()
 wxAuiToolBarItem* wxAuiToolBar::AddSpacer(int pixels)
 {
     wxAuiToolBarItem item;
+    item.m_window = nullptr;
+    item.m_label = wxEmptyString;
+    item.m_bitmap = wxBitmapBundle();
+    item.m_disabledBitmap = wxBitmapBundle();
+    item.m_active = true;
+    item.m_dropDown = false;
     item.m_spacerPixels = pixels;
     item.m_toolId = -1;
+    item.m_state = 0;
+    item.m_proportion = 0;
     item.m_kind = wxITEM_SPACER;
+    item.m_sizerItem = nullptr;
+    item.m_minSize = wxDefaultSize;
+    item.m_userData = 0;
+    item.m_sticky = false;
 
     m_items.Add(item);
     return &m_items.Last();
@@ -1161,9 +1241,21 @@ wxAuiToolBarItem* wxAuiToolBar::AddSpacer(int pixels)
 wxAuiToolBarItem* wxAuiToolBar::AddStretchSpacer(int proportion)
 {
     wxAuiToolBarItem item;
+    item.m_window = nullptr;
+    item.m_label = wxEmptyString;
+    item.m_bitmap = wxBitmapBundle();
+    item.m_disabledBitmap = wxBitmapBundle();
+    item.m_active = true;
+    item.m_dropDown = false;
+    item.m_spacerPixels = 0;
     item.m_toolId = -1;
+    item.m_state = 0;
     item.m_proportion = proportion;
     item.m_kind = wxITEM_SPACER;
+    item.m_sizerItem = nullptr;
+    item.m_minSize = wxDefaultSize;
+    item.m_userData = 0;
+    item.m_sticky = false;
 
     m_items.Add(item);
     return &m_items.Last();
@@ -2703,6 +2795,12 @@ void wxAuiToolBar::OnLeftDown(wxMouseEvent& evt)
             m_actionItem = nullptr;
             return;
         }
+        // Remove the Statusbar Help
+        if (m_hasPushedStatusText)
+        {
+            m_hasPushedStatusText = false;
+            ResetToolStatusHelp();
+        }
 
         UnsetToolTip();
 
@@ -2966,9 +3064,37 @@ void wxAuiToolBar::OnMotion(wxMouseEvent& evt)
                     else
                         UnsetToolTip();
                 }
+                if (packingHitItem != m_help_item)
+                {
+                    m_help_item = packingHitItem;
+
+                    // Remove the previous Statusbar Help
+                    if (m_hasPushedStatusText)
+                    {
+                        m_hasPushedStatusText = false;
+                        ResetToolStatusHelp();
+                    }
+                    // Show the status bar Help 
+                    if (!packingHitItem->m_longHelp.empty())
+                    {
+                        SetToolStatusHelp(packingHitItem->m_longHelp);
+                    }
+                    else
+                    {
+                        SetToolStatusHelp(packingHitItem->m_shortHelp);
+                    }
+                }
             }
             else
             {
+                // Remove the Statusbar Help
+                if (m_hasPushedStatusText)
+                {
+                    m_hasPushedStatusText = false;
+                    ResetToolStatusHelp();
+                }
+                m_help_item = NULL;
+
                 UnsetToolTip();
                 m_tipItem = nullptr;
             }
@@ -2986,6 +3112,7 @@ void wxAuiToolBar::DoResetMouseState()
     SetPressedItem(nullptr);
 
     m_tipItem = nullptr;
+    m_help_item = nullptr;
 
     // we have to reset those here, because the mouse-up handlers which do
     // it usually won't be called if we let go of a mouse button while we
@@ -3027,6 +3154,56 @@ void wxAuiToolBar::OnSetCursor(wxSetCursorEvent& evt)
     evt.SetCursor(cursor);
 }
 
+wxFrame * wxAuiToolBar::GetParentFrame()
+{
+    wxAuiFloatingFrame * parentFloatingFrame = wxDynamicCast(GetParent(), wxAuiFloatingFrame);
+    if (parentFloatingFrame)
+    {
+        wxFrame * parentFrame = wxDynamicCast(parentFloatingFrame->GetParent(), wxFrame);
+
+        return (parentFrame);
+    }
+    else // we're not a floating pane
+    {
+        wxFrame * parentFrame = wxDynamicCast(GetParent(), wxFrame);
+
+        return (parentFrame);
+    }
+}
+
+void wxAuiToolBar::SetToolStatusHelp(const wxString & helptext)
+{
+    wxFrame * frame = GetParentFrame();
+    if (frame)
+    {
+        wxStatusBar * sb = frame->GetStatusBar();
+
+        if (sb)
+        {
+            // Set the Status Text
+            if (!m_hasPushedStatusText)
+            {
+                m_hasPushedStatusText = true;
+                sb->PushStatusText(helptext);
+            }
+        }
+    }
+}
+
+void wxAuiToolBar::ResetToolStatusHelp()
+{
+    wxFrame * frame = GetParentFrame();
+    if (frame)
+    {
+        wxStatusBar * sb = frame->GetStatusBar();
+
+        if (sb)
+        {
+            // Remove the Statusbar Help
+            sb->PopStatusText();
+        }
+    }
+}
 
 #endif // wxUSE_AUI
 
