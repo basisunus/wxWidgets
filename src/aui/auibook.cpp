@@ -1311,7 +1311,6 @@ int wxAuiTabContainer::GetFirstTabNotOfKind(wxAuiTabKind kind) const
 
 wxBEGIN_EVENT_TABLE(wxAuiTabCtrl, wxControl)
     EVT_PAINT(wxAuiTabCtrl::OnPaint)
-    EVT_ERASE_BACKGROUND(wxAuiTabCtrl::OnEraseBackground)
     EVT_SIZE(wxAuiTabCtrl::OnSize)
     EVT_LEFT_DOWN(wxAuiTabCtrl::OnLeftDown)
     EVT_LEFT_DCLICK(wxAuiTabCtrl::OnLeftDClick)
@@ -1425,10 +1424,6 @@ void wxAuiTabCtrl::OnSysColourChanged(wxSysColourChangedEvent &event)
     {
         m_art->UpdateColoursFromSystem();
     }
-}
-
-void wxAuiTabCtrl::OnEraseBackground(wxEraseEvent& WXUNUSED(evt))
-{
 }
 
 void wxAuiTabCtrl::OnSize(wxSizeEvent& evt)
@@ -2060,45 +2055,9 @@ struct wxAuiNotebook::TabInfo : wxAuiNotebookPosition
     wxAuiNotebookPage* pageInfo = nullptr;
 };
 
-#define EVT_AUI_RANGE(id1, id2, event, func) \
-    wx__DECLARE_EVT2(event, id1, id2, wxAuiNotebookEventHandler(func))
-
 wxBEGIN_EVENT_TABLE(wxAuiNotebook, wxBookCtrlBase)
     EVT_SIZE(wxAuiNotebook::OnSize)
     EVT_CHILD_FOCUS(wxAuiNotebook::OnChildFocusNotebook)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_PAGE_CHANGING,
-                      wxAuiNotebook::OnTabClicked)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_BEGIN_DRAG,
-                      wxAuiNotebook::OnTabBeginDrag)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_END_DRAG,
-                      wxAuiNotebook::OnTabEndDrag)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_CANCEL_DRAG,
-                      wxAuiNotebook::OnTabCancelDrag)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_DRAG_MOTION,
-                      wxAuiNotebook::OnTabDragMotion)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_BUTTON,
-                      wxAuiNotebook::OnTabButton)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_TAB_MIDDLE_DOWN,
-                      wxAuiNotebook::OnTabMiddleDown)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_TAB_MIDDLE_UP,
-                      wxAuiNotebook::OnTabMiddleUp)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_TAB_RIGHT_DOWN,
-                      wxAuiNotebook::OnTabRightDown)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_TAB_RIGHT_UP,
-                      wxAuiNotebook::OnTabRightUp)
-    EVT_AUI_RANGE(wxAuiBaseTabCtrlId, wxAuiBaseTabCtrlId+500,
-                      wxEVT_AUINOTEBOOK_BG_DCLICK,
-                      wxAuiNotebook::OnTabBgDClick)
     EVT_NAVIGATION_KEY(wxAuiNotebook::OnNavigationKeyNotebook)
     EVT_SYS_COLOUR_CHANGED(wxAuiNotebook::OnSysColourChanged)
     EVT_DPI_CHANGED(wxAuiNotebook::OnDpiChanged)
