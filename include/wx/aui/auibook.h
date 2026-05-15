@@ -390,7 +390,6 @@ protected:
     void OnRightUp(wxMouseEvent& evt);
     void OnMotion(wxMouseEvent& evt);
     void OnLeaveWindow(wxMouseEvent& evt);
-    void OnButton(wxAuiNotebookEvent& evt);
     void OnSetFocus(wxFocusEvent& event);
     void OnKillFocus(wxFocusEvent& event);
     void OnChar(wxKeyEvent& event);

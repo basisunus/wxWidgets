@@ -901,34 +901,15 @@ void wxAuiTabContainer::RenderButtons(wxDC& dc, wxWindow* wnd,
 // Render() renders the tab catalog to the specified DC
 // It is a virtual function and can be overridden to
 // provide custom drawing capabilities
-void wxAuiTabContainer::Render(wxDC* raw_dc, wxWindow* wnd)
+void wxAuiTabContainer::Render(wxDC* pdc, wxWindow* wnd)
 {
-    if (!raw_dc || !raw_dc->IsOk())
-        return;
-
     if (m_rect.IsEmpty())
         return;
 
     size_t i;
     size_t page_count = m_pages.GetCount();
 
-#if wxALWAYS_NATIVE_DOUBLE_BUFFER
-    wxDC& dc = *raw_dc;
-#else
-    wxMemoryDC dc;
-
-    // use the same layout direction as the window DC uses to ensure that the
-    // text is rendered correctly
-    dc.SetLayoutDirection(raw_dc->GetLayoutDirection());
-
-    wxBitmap bmp;
-    // create off-screen bitmap
-    bmp.Create(m_rect.GetWidth(), m_rect.GetHeight(),*raw_dc);
-    dc.SelectObject(bmp);
-
-    if (!dc.IsOk())
-        return;
-#endif
+    wxDC& dc = *pdc;
 
     // draw background
     m_art->DrawBackground(dc, wnd, m_rect);
@@ -1015,13 +996,6 @@ void wxAuiTabContainer::Render(wxDC* raw_dc, wxWindow* wnd)
     {
         m_art->DrawPageTab(dc, wnd, m_pages.Item(active), active_rect);
     }
-
-
-#if !wxALWAYS_NATIVE_DOUBLE_BUFFER
-    raw_dc->Blit(m_rect.x, m_rect.y,
-                 m_rect.GetWidth(), m_rect.GetHeight(),
-                 &dc, 0, 0);
-#endif
 }
 
 // Is the tab visible?
@@ -1321,7 +1295,6 @@ wxBEGIN_EVENT_TABLE(wxAuiTabCtrl, wxControl)
     EVT_RIGHT_UP(wxAuiTabCtrl::OnRightUp)
     EVT_MOTION(wxAuiTabCtrl::OnMotion)
     EVT_LEAVE_WINDOW(wxAuiTabCtrl::OnLeaveWindow)
-    EVT_AUINOTEBOOK_BUTTON(wxID_ANY, wxAuiTabCtrl::OnButton)
     EVT_SET_FOCUS(wxAuiTabCtrl::OnSetFocus)
     EVT_KILL_FOCUS(wxAuiTabCtrl::OnKillFocus)
     EVT_CHAR(wxAuiTabCtrl::OnChar)
@@ -4784,6 +4757,8 @@ wxAuiNotebook::LoadLayout(const wxString& name,
     // means we're reusing the existing pages and so don't need to do anything).
     if ( activeInMainTab )
         m_curPage = m_tabs.GetIdxFromWindow(activeInMainTab);
+
+    UpdateHintWindowSize();
 
     m_mgr.Update();
 }
